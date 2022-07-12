@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+    <meta content="utf-8" http-equiv="encoding">
+    <html>
+    <head>
+        <title>Using web3 API with MetaMask</title>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.7.3/web3.min.js"></script>
+        <script>
+            window.addEventListener('load', function () {
+                console.log(window)
+                if (window.ethereum) {
+                    window.web3 = new Web3(ethereum);
+                    ethereum.enable()
+                        .then(() => {
+                            console.log("Ethereum enabled");
+                        })
+                        .catch(() => {
+                            console.warn('User didn\'t allow access to accounts.');
+                            waitLogin();
+                        });
+                } else {
+                    console.log("Non-Ethereum browser detected. You should consider installing MetaMask.");
+                }
+            });
+        </script>
+    </head>
+    <body>
+        <button onclick="addOrder()">Add Order</button>
+        <button onclick="fixedBuy()">Fixed Sale</button>
+        <button onclick="fixedSaleBid()">Fixed Sale Bid</button>
+        <button onclick="completeFixedBidSale()">Complete Fixed Sale Bidding</button>
+        
+        <script>
+
+            function Order(tokenType, saleType, seller, tokenAddress, tokenId, tokenAmount, price, startTime, endTime, nonce) {
+                return { tokenType, saleType, seller, tokenAddress, tokenId, tokenAmount, price, startTime, endTime, nonce };
+            }
+
+            function BidOrder(order, buyer, bidAmount){
+                const { tokenType, saleType, seller, tokenAddress, tokenId, tokenAmount, price, startTime, endTime, nonce } = order;
+                return { tokenType, saleType, seller, tokenAddress, tokenId, tokenAmount, price, startTime, endTime, nonce, buyer, bidAmount };
+            }
+
+            let accounts = [];
+            async function getAccounts() {
+                accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                console.log('accounts', accounts)
+            }
+            getAccounts();
+
+            const contractAddress = "0x054960a24473CA85b2610a1f3A96A52C7E81F946";
+            const abi = [{"inputs":[],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"previousAdmin","type":"address"},{"indexed":false,"internalType":"address","name":"newAdmin","type":"address"}],"name":"AdminChanged","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"beacon","type":"address"}],"name":"BeaconUpgraded","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"seller","type":"address"},{"indexed":false,"internalType":"address","name":"buyer","type":"address"},{"indexed":false,"internalType":"address","name":"tokenAddress","type":"address"},{"indexed":false,"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"Buy","type":"event"},{"anonymous":false,"inputs":[{"components":[{"internalType":"bytes4","name":"tokenType","type":"bytes4"},{"internalType":"bytes4","name":"saleType","type":"bytes4"},{"internalType":"address","name":"seller","type":"address"},{"internalType":"address","name":"tokenAddress","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"},{"internalType":"uint256","name":"tokenAmount","type":"uint256"},{"internalType":"uint256","name":"price","type":"uint256"},{"internalType":"uint256","name":"startTime","type":"uint256"},{"internalType":"uint256","name":"endTime","type":"uint256"},{"internalType":"uint256","name":"nonce","type":"uint256"}],"indexed":false,"internalType":"struct LibOrder.Order","name":"order","type":"tuple"}],"name":"OrderCancelled","type":"event"},{"anonymous":false,"inputs":[{"components":[{"internalType":"bytes4","name":"tokenType","type":"bytes4"},{"internalType":"bytes4","name":"saleType","type":"bytes4"},{"internalType":"address","name":"seller","type":"address"},{"internalType":"address","name":"tokenAddress","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"},{"internalType":"uint256","name":"tokenAmount","type":"uint256"},{"internalType":"uint256","name":"price","type":"uint256"},{"internalType":"uint256","name":"startTime","type":"uint256"},{"internalType":"uint256","name":"endTime","type":"uint256"},{"internalType":"uint256","name":"nonce","type":"uint256"}],"indexed":false,"internalType":"struct LibOrder.Order","name":"order","type":"tuple"},{"indexed":false,"internalType":"bytes32","name":"hash","type":"bytes32"},{"indexed":false,"internalType":"address","name":"signer","type":"address"}],"name":"OrderCreated","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"account","type":"address"}],"name":"Paused","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"bytes32","name":"role","type":"bytes32"},{"indexed":true,"internalType":"bytes32","name":"previousAdminRole","type":"bytes32"},{"indexed":true,"internalType":"bytes32","name":"newAdminRole","type":"bytes32"}],"name":"RoleAdminChanged","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"bytes32","name":"role","type":"bytes32"},{"indexed":true,"internalType":"address","name":"account","type":"address"},{"indexed":true,"internalType":"address","name":"sender","type":"address"}],"name":"RoleGranted","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"bytes32","name":"role","type":"bytes32"},{"indexed":true,"internalType":"address","name":"account","type":"address"},{"indexed":true,"internalType":"address","name":"sender","type":"address"}],"name":"RoleRevoked","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"account","type":"address"}],"name":"Unpaused","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"implementation","type":"address"}],"name":"Upgraded","type":"event"},{"inputs":[],"name":"ASSET_TYPE_ERC1155","outputs":[{"internalType":"bytes4","name":"","type":"bytes4"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"ASSET_TYPE_ERC721","outputs":[{"internalType":"bytes4","name":"","type":"bytes4"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"CANCELLED_ORDER_CLASS","outputs":[{"internalType":"bytes4","name":"","type":"bytes4"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"CLOSED_AUCTION_SALE_CLASS","outputs":[{"internalType":"bytes4","name":"","type":"bytes4"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"COMPLETED_ORDER_CLASS","outputs":[{"internalType":"bytes4","name":"","type":"bytes4"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"DEFAULT_ADMIN_ROLE","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"FIXED_SALE_CLASS","outputs":[{"internalType":"bytes4","name":"","type":"bytes4"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"NEW_ORDER_CLASS","outputs":[{"internalType":"bytes4","name":"","type":"bytes4"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"OPEN_AUCTION_SALE_CLASS","outputs":[{"internalType":"bytes4","name":"","type":"bytes4"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"name":"OrderStatus","outputs":[{"internalType":"bytes4","name":"","type":"bytes4"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"PAUSER_ROLE","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"UPDATER_ROLE","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"WEKTA","outputs":[{"internalType":"contract IERC20Upgradeable","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"blacklisted","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"components":[{"internalType":"bytes4","name":"tokenType","type":"bytes4"},{"internalType":"bytes4","name":"saleType","type":"bytes4"},{"internalType":"address","name":"seller","type":"address"},{"internalType":"address","name":"tokenAddress","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"},{"internalType":"uint256","name":"tokenAmount","type":"uint256"},{"internalType":"uint256","name":"price","type":"uint256"},{"internalType":"uint256","name":"startTime","type":"uint256"},{"internalType":"uint256","name":"endTime","type":"uint256"},{"internalType":"uint256","name":"nonce","type":"uint256"}],"internalType":"struct LibOrder.Order","name":"order","type":"tuple"}],"name":"cancelOrder","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"components":[{"internalType":"bytes4","name":"tokenType","type":"bytes4"},{"internalType":"bytes4","name":"saleType","type":"bytes4"},{"internalType":"address","name":"seller","type":"address"},{"internalType":"address","name":"tokenAddress","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"},{"internalType":"uint256","name":"tokenAmount","type":"uint256"},{"internalType":"uint256","name":"price","type":"uint256"},{"internalType":"uint256","name":"startTime","type":"uint256"},{"internalType":"uint256","name":"endTime","type":"uint256"},{"internalType":"uint256","name":"nonce","type":"uint256"},{"internalType":"address","name":"buyer","type":"address"},{"internalType":"uint256","name":"bidAmount","type":"uint256"}],"internalType":"struct LibBidOrder.BidOrder","name":"bidOrder","type":"tuple"},{"internalType":"bytes","name":"signature","type":"bytes"}],"name":"completeBidding","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"components":[{"internalType":"bytes4","name":"tokenType","type":"bytes4"},{"internalType":"bytes4","name":"saleType","type":"bytes4"},{"internalType":"address","name":"seller","type":"address"},{"internalType":"address","name":"tokenAddress","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"},{"internalType":"uint256","name":"tokenAmount","type":"uint256"},{"internalType":"uint256","name":"price","type":"uint256"},{"internalType":"uint256","name":"startTime","type":"uint256"},{"internalType":"uint256","name":"endTime","type":"uint256"},{"internalType":"uint256","name":"nonce","type":"uint256"}],"internalType":"struct LibOrder.Order","name":"order","type":"tuple"}],"name":"completeFixedSale","outputs":[],"stateMutability":"payable","type":"function"},{"inputs":[{"components":[{"internalType":"bytes4","name":"tokenType","type":"bytes4"},{"internalType":"bytes4","name":"saleType","type":"bytes4"},{"internalType":"address","name":"seller","type":"address"},{"internalType":"address","name":"tokenAddress","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"},{"internalType":"uint256","name":"tokenAmount","type":"uint256"},{"internalType":"uint256","name":"price","type":"uint256"},{"internalType":"uint256","name":"startTime","type":"uint256"},{"internalType":"uint256","name":"endTime","type":"uint256"},{"internalType":"uint256","name":"nonce","type":"uint256"}],"internalType":"struct LibOrder.Order","name":"order","type":"tuple"},{"internalType":"bytes","name":"signature","type":"bytes"}],"name":"createOrder","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"ektaNftRegistry","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address[]","name":"accounts","type":"address[]"}],"name":"excludeAllFromBlacklist","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"excludeFromBlacklist","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"bytes32","name":"role","type":"bytes32"}],"name":"getRoleAdmin","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"bytes32","name":"role","type":"bytes32"},{"internalType":"address","name":"account","type":"address"}],"name":"grantRole","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"bytes32","name":"role","type":"bytes32"},{"internalType":"address","name":"account","type":"address"}],"name":"hasRole","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address[]","name":"accounts","type":"address[]"}],"name":"includeAllInBlacklist","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"includeInBlacklist","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"nftRegistry","type":"address"}],"name":"initialize","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"isBlacklisted","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"pause","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"paused","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"renounceOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"bytes32","name":"role","type":"bytes32"},{"internalType":"address","name":"account","type":"address"}],"name":"renounceRole","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"bytes32","name":"role","type":"bytes32"},{"internalType":"address","name":"account","type":"address"}],"name":"revokeRole","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"bytes4","name":"interfaceId","type":"bytes4"}],"name":"supportsInterface","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"unpause","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newImplementation","type":"address"}],"name":"upgradeTo","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newImplementation","type":"address"},{"internalType":"bytes","name":"data","type":"bytes"}],"name":"upgradeToAndCall","outputs":[],"stateMutability":"payable","type":"function"},{"stateMutability":"payable","type":"receive"}]
+            
+            // let web_3 = new Web3("wss://rinkeby.infura.io/ws/v3/3df86088496b4ef2ba618eb4764d0b7a");
+            let web_3 = new Web3("https://data-seed-prebsc-1-s1.binance.org:8545/");
+            
+            let contractInstance = new web_3.eth.Contract(abi, contractAddress)
+
+            // erc721
+            let order = Order("0x73ad2146", "0x35e2ccbf", "0xFF0dF0BDA102aecDaD1b2A9BC96BBf7e59b216da", "0x9d14d7a614Bab169c5590ae54Da065136350aE76", 5, 0, (1*10**14).toString(), 1652694648, 0, 0);
+
+            // erc1155
+            // let order = Order("0x973bb640", "0x217373AB5e0082B2Ce622169672ECa6F4462319C", "0x30ea4be2", "0x0E456891C3bE29d1E337079EA297d05323e465Db", 0, '100000000000000000000', (1*10**14).toString(), 0, 0, 0);
+
+            async function addOrder() {
+
+                console.log('order', order); 
+
+                let param = JSON.stringify({
+                    types: {
+                        EIP712Domain: [
+                            { name: 'name', type: 'string' },
+                            { name: 'version', type: 'string' },
+                            { name: 'chainId', type: 'uint256' },
+                            { name: 'verifyingContract', type: 'address' }
+                        ],
+                        Order: [
+                            { name: 'tokenType', type: 'bytes4' },
+                            { name: 'saleType', type: 'bytes4' },
+                            { name: 'seller', type: 'address' },
+                            { name: 'tokenAddress', type: 'address' },
+                            { name: 'tokenId', type: 'uint256' },
+                            { name: 'tokenAmount', type: 'uint256' },
+                            { name: 'price', type: 'uint256' },
+                            { name: 'startTime', type: 'uint256' },
+                            { name: 'endTime', type: 'uint256' },
+                            { name: 'nonce', type: 'uint256' }
+                        ]
+                    },
+                    primaryType: 'Order',
+                    domain: {
+                        name: 'Order',
+                        version: '1',
+                        chainId: 97,
+                        verifyingContract: contractAddress
+                    },
+                    message: order
+                })
+
+
+                const signature = await window.ethereum.request({ method: 'eth_signTypedData_v4', params: [accounts[0], param]});
+                console.log('signature', signature)
+
+
+                createOrder(signature);
+            }
+
+            async function createOrder(signature) {
+
+                let orderAbi = await contractInstance.methods.createOrder(order, signature).encodeABI();
+            
+                let transactionParams = {
+                    from: accounts[0],
+                    to: contractAddress,
+                    data: orderAbi,
+                }
+                const transaction = await window.ethereum.request({ method: 'eth_sendTransaction', params: [transactionParams]});
+
+            }
+        
+            async function fixedBuy() {
+                let orderAbi = await contractInstance.methods.completeFixedSale(order).encodeABI();
+            
+                let transactionParams = {
+                    from: "0xFF0dF0BDA102aecDaD1b2A9BC96BBf7e59b216da",
+                    to: contractAddress,
+                    value: "100000000000000",
+                    data: orderAbi,
+                }
+                const transaction = await window.ethereum.request({ method: 'eth_sendTransaction', params: [transactionParams]});
+            }
+
+            let orderMade = Order("0x73ad2146", "0x35e2ccbf", "0xFF0dF0BDA102aecDaD1b2A9BC96BBf7e59b216da", "0x9d14d7a614Bab169c5590ae54Da065136350aE76", 5, 0, (1*10**14).toString(), 1652694648, 0, 0);
+            let bidOrder = BidOrder(orderMade, "0x217373AB5e0082B2Ce622169672ECa6F4462319C", (1*10**15).toString());
+            async function fixedSaleBid() {
+                console.log(bidOrder)
+
+                let param = JSON.stringify({
+                    types: {
+                        EIP712Domain: [
+                            { name: 'name', type: 'string' },
+                            { name: 'version', type: 'string' },
+                            { name: 'chainId', type: 'uint256' },
+                            { name: 'verifyingContract', type: 'address' }
+                        ],
+                        BidOrder: [
+                            { name: 'tokenType', type: 'bytes4' },
+                            { name: 'saleType', type: 'bytes4' },
+                            { name: 'seller', type: 'address' },
+                            { name: 'tokenAddress', type: 'address' },
+                            { name: 'tokenId', type: 'uint256' },
+                            { name: 'tokenAmount', type: 'uint256' },
+                            { name: 'price', type: 'uint256' },
+                            { name: 'startTime', type: 'uint256' },
+                            { name: 'endTime', type: 'uint256' },
+                            { name: 'nonce', type: 'uint256' },
+                            { name: 'buyer', type: 'address' },
+                            { name: 'bidAmount', type: 'uint256' }
+                        ]
+                    },
+                    primaryType: 'BidOrder',
+                    domain: {
+                        name: 'Order',
+                        version: '1',
+                        chainId: 97,
+                        verifyingContract: contractAddress
+                    },
+                    message: bidOrder
+                })
+
+                const signature = await window.ethereum.request({ method: 'eth_signTypedData_v4', params: ["0x217373AB5e0082B2Ce622169672ECa6F4462319C", param]});
+                console.log('signature', signature)
+            }
+
+            async function completeFixedBidSale() {
+                let signature = "0xf0fc7aa88af007a83f6aeddcaa85e3f443c123aaf8fac0c7dd77d80c46f726782296344f0f9f1128266c1911e5728c990632baeec7ce49aea56440b9d6ccc9291b"
+                let orderAbi = await contractInstance.methods.completeBidding(bidOrder, signature).encodeABI();
+            
+                let transactionParams = {
+                    from: "0xFF0dF0BDA102aecDaD1b2A9BC96BBf7e59b216da",
+                    to: contractAddress,
+                    data: orderAbi,
+                }
+                const transaction = await window.ethereum.request({ method: 'eth_sendTransaction', params: [transactionParams]});
+            }
+        </script>
+    </body>
+</html>
